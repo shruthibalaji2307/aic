@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aic_data_collection_pipeline</name>
+  <version>0.0.1</version>
+  <description>Automation helpers for AIC LeRobot data collection workflows.</description>
+  <maintainer email="you@example.com">AIC Participant</maintainer>
+  <license>Apache-2.0</license>
+
+  <exec_depend>python3-yaml</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
