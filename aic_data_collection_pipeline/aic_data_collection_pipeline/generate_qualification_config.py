@@ -71,6 +71,8 @@ def _build_sc_trial(
     rng: random.Random,
     sc_translation_min: float,
     sc_translation_max: float,
+    *,
+    randomize_board_pose: bool = True,
 ) -> dict:
     trial = copy.deepcopy(template_trial)
     task_board = trial["scene"]["task_board"]
@@ -90,8 +92,18 @@ def _build_sc_trial(
             )
 
     task["target_module_name"] = f"sc_port_{target_sc_rail}"
-    _randomize_board_pose(trial, rng)
+    if randomize_board_pose:
+        _randomize_board_pose(trial, rng)
     return trial
+
+
+def _build_sc_trial_ablation_step1(template_trial: dict) -> dict:
+    """Step-1 ablation: exact SC layout from the template (trial_3), no randomization.
+
+    Use this to verify CheatCode + SC + engine + sim before enabling SC translation
+    or board-pose randomization.
+    """
+    return copy.deepcopy(template_trial)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -170,6 +182,25 @@ def _parse_args() -> argparse.Namespace:
         default=DOC_LIMITS["sc_translation_max"],
         help="SC rail translation maximum (meters).",
     )
+    ablation = parser.add_mutually_exclusive_group()
+    ablation.add_argument(
+        "--ablation-step1",
+        action="store_true",
+        help=(
+            "Ablation step 1: SC-only, exact template SC trial (no random board pose, "
+            "no random SC translation). Isolates CheatCode + SC on the reference layout."
+        ),
+    )
+    ablation.add_argument(
+        "--ablation-step2",
+        action="store_true",
+        help=(
+            "Ablation step 2: SC-only; randomize SC rail translation within "
+            "--sc-translation-min/max (default: doc limits). Task board pose stays as in "
+            "the template. Use after step 1 passes to test translation sensitivity "
+            "before board-pose randomization (step 3)."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -182,36 +213,57 @@ def main() -> None:
     template_sc = config["trials"]["trial_3"]
 
     generated_trials = {}
-    for idx in range(args.num_trials):
-        trial_name = f"trial_{idx + 1}"
-        if args.mode == "alternating":
-            task_type = "sfp" if idx % 2 == 0 else "sc"
-        else:
-            task_type = rng.choice(["sfp", "sc"])
-
-        if task_type == "sfp":
-            generated_trials[trial_name] = _build_sfp_trial(
-                template_sfp,
-                rng,
-                nic_translation_min=args.nic_translation_min,
-                nic_translation_max=args.nic_translation_max,
-                nic_yaw_min=args.nic_yaw_min,
-                nic_yaw_max=args.nic_yaw_max,
-            )
-        else:
+    if args.ablation_step1:
+        for idx in range(args.num_trials):
+            trial_name = f"trial_{idx + 1}"
+            generated_trials[trial_name] = _build_sc_trial_ablation_step1(template_sc)
+    elif args.ablation_step2:
+        for idx in range(args.num_trials):
+            trial_name = f"trial_{idx + 1}"
             generated_trials[trial_name] = _build_sc_trial(
                 template_sc,
                 rng,
                 sc_translation_min=args.sc_translation_min,
                 sc_translation_max=args.sc_translation_max,
+                randomize_board_pose=False,
             )
+    else:
+        for idx in range(args.num_trials):
+            trial_name = f"trial_{idx + 1}"
+            if args.mode == "alternating":
+                task_type = "sfp" if idx % 2 == 0 else "sc"
+            else:
+                task_type = rng.choice(["sfp", "sc"])
+
+            if task_type == "sfp":
+                generated_trials[trial_name] = _build_sfp_trial(
+                    template_sfp,
+                    rng,
+                    nic_translation_min=args.nic_translation_min,
+                    nic_translation_max=args.nic_translation_max,
+                    nic_yaw_min=args.nic_yaw_min,
+                    nic_yaw_max=args.nic_yaw_max,
+                )
+            else:
+                generated_trials[trial_name] = _build_sc_trial(
+                    template_sc,
+                    rng,
+                    sc_translation_min=args.sc_translation_min,
+                    sc_translation_max=args.sc_translation_max,
+                )
 
     config["trials"] = generated_trials
 
     args.output_config.parent.mkdir(parents=True, exist_ok=True)
     args.output_config.write_text(yaml.safe_dump(config, sort_keys=False))
     print(f"Generated config: {args.output_config}")
-    print(f"Trials: {len(generated_trials)} | Seed: {args.seed} | Mode: {args.mode}")
+    if args.ablation_step1:
+        mode_label = "ablation_step1"
+    elif args.ablation_step2:
+        mode_label = "ablation_step2"
+    else:
+        mode_label = args.mode
+    print(f"Trials: {len(generated_trials)} | Seed: {args.seed} | Mode: {mode_label}")
 
 
 if __name__ == "__main__":

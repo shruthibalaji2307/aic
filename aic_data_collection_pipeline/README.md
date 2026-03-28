@@ -43,6 +43,34 @@ By default, this generator now uses the task-board limits documented in `docs/ta
 You can override them via CLI flags:
 `--nic-translation-min/max`, `--nic-yaw-min/max`, `--sc-translation-min/max`.
 
+### SC insertion debugging (ablation steps 1–2)
+
+To isolate whether SC failures come from randomization vs. CheatCode or the stack, use **`--ablation-step1`**. It emits **SC-only** trials: each trial is an exact deep copy of the template’s SC block (in `sample_config.yaml` this is **`trial_3`**). There is **no** random task-board pose and **no** random SC rail translation. `--seed` and `--mode` do not change the layout in this mode. Use `--num-trials N` to repeat the **same** scene N times (e.g. flakiness checks).
+
+```bash
+cd ~/ws_aic/src/aic
+pixi run aic-generate-qualification-config \
+  --template-config ~/ws_aic/src/aic/aic_engine/config/sample_config.yaml \
+  --output-config ~/ws_aic/src/aic/tmp/qualification_sc_ablation_step1.yaml \
+  --num-trials 1 \
+  --ablation-step1
+```
+
+Point `/entrypoint.sh` at `qualification_sc_ablation_step1.yaml` and run your usual host-side CheatCode + `lerobot-record` flow.
+
+**Ablation step 2** (after step 1 passes): **`--ablation-step2`** — SC-only; **random SC rail translation** in `[--sc-translation-min, --sc-translation-max]` (defaults match `docs/task_board_description.md`); **task board pose stays exactly as in the template** (no board randomization). Each trial still randomizes which SC rail is active (`sc_rail_0` vs `sc_rail_1`), same as the normal SC generator. Use **`--seed`** for reproducible configs.
+
+```bash
+pixi run aic-generate-qualification-config \
+  --template-config ~/ws_aic/src/aic/aic_engine/config/sample_config.yaml \
+  --output-config ~/ws_aic/src/aic/tmp/qualification_sc_ablation_step2.yaml \
+  --seed 42 \
+  --num-trials 10 \
+  --ablation-step2
+```
+
+If step 2 fails while step 1 passed, treat **SC translation range** (or rail choice interaction) as the likely culprit before enabling full randomization (step 3: add board pose randomization via normal `--mode` SC trials without ablation flags).
+
 **Terminal B — inside Distrobox `aic_eval`:** start sim + engine with **ground truth** (needed for CheatCode) and your YAML:
 
 ```bash
