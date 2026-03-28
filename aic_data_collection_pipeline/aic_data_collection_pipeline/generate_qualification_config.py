@@ -6,6 +6,16 @@ from pathlib import Path
 import yaml
 
 
+DOC_LIMITS = {
+    "nic_translation_min": -0.0215,
+    "nic_translation_max": 0.0234,
+    "nic_yaw_min": -0.1745329252,  # -10 deg
+    "nic_yaw_max": 0.1745329252,  # +10 deg
+    "sc_translation_min": -0.06,
+    "sc_translation_max": 0.055,
+}
+
+
 def _randomize_board_pose(trial: dict, rng: random.Random) -> None:
     trial["scene"]["task_board"]["pose"]["x"] = round(rng.uniform(0.12, 0.20), 4)
     trial["scene"]["task_board"]["pose"]["y"] = round(rng.uniform(-0.22, 0.05), 4)
@@ -22,7 +32,14 @@ def _default_sc_entity_pose() -> dict:
     return {"translation": 0.0, "roll": 0.0, "pitch": 0.0, "yaw": 0.0}
 
 
-def _build_sfp_trial(template_trial: dict, rng: random.Random) -> dict:
+def _build_sfp_trial(
+    template_trial: dict,
+    rng: random.Random,
+    nic_translation_min: float,
+    nic_translation_max: float,
+    nic_yaw_min: float,
+    nic_yaw_max: float,
+) -> dict:
     trial = copy.deepcopy(template_trial)
     task_board = trial["scene"]["task_board"]
     task = trial["tasks"]["task_1"]
@@ -39,9 +56,9 @@ def _build_sfp_trial(template_trial: dict, rng: random.Random) -> dict:
             if "entity_pose" not in block:
                 block["entity_pose"] = copy.deepcopy(_default_nic_entity_pose())
             block["entity_pose"]["translation"] = round(
-                rng.uniform(-0.021, 0.023), 4
+                rng.uniform(nic_translation_min, nic_translation_max), 4
             )
-            block["entity_pose"]["yaw"] = round(rng.uniform(-0.18, 0.18), 4)
+            block["entity_pose"]["yaw"] = round(rng.uniform(nic_yaw_min, nic_yaw_max), 4)
 
     task["port_name"] = target_port
     task["target_module_name"] = f"nic_card_mount_{target_nic_rail}"
@@ -49,7 +66,12 @@ def _build_sfp_trial(template_trial: dict, rng: random.Random) -> dict:
     return trial
 
 
-def _build_sc_trial(template_trial: dict, rng: random.Random) -> dict:
+def _build_sc_trial(
+    template_trial: dict,
+    rng: random.Random,
+    sc_translation_min: float,
+    sc_translation_max: float,
+) -> dict:
     trial = copy.deepcopy(template_trial)
     task_board = trial["scene"]["task_board"]
     task = trial["tasks"]["task_1"]
@@ -64,7 +86,7 @@ def _build_sc_trial(template_trial: dict, rng: random.Random) -> dict:
             if "entity_pose" not in block:
                 block["entity_pose"] = copy.deepcopy(_default_sc_entity_pose())
             block["entity_pose"]["translation"] = round(
-                rng.uniform(-0.055, 0.055), 4
+                rng.uniform(sc_translation_min, sc_translation_max), 4
             )
 
     task["target_module_name"] = f"sc_port_{target_sc_rail}"
@@ -112,6 +134,42 @@ def _parse_args() -> argparse.Namespace:
             "balanced output."
         ),
     )
+    parser.add_argument(
+        "--nic-translation-min",
+        type=float,
+        default=DOC_LIMITS["nic_translation_min"],
+        help="NIC rail translation minimum (meters).",
+    )
+    parser.add_argument(
+        "--nic-translation-max",
+        type=float,
+        default=DOC_LIMITS["nic_translation_max"],
+        help="NIC rail translation maximum (meters).",
+    )
+    parser.add_argument(
+        "--nic-yaw-min",
+        type=float,
+        default=DOC_LIMITS["nic_yaw_min"],
+        help="NIC rail yaw minimum (radians).",
+    )
+    parser.add_argument(
+        "--nic-yaw-max",
+        type=float,
+        default=DOC_LIMITS["nic_yaw_max"],
+        help="NIC rail yaw maximum (radians).",
+    )
+    parser.add_argument(
+        "--sc-translation-min",
+        type=float,
+        default=DOC_LIMITS["sc_translation_min"],
+        help="SC rail translation minimum (meters).",
+    )
+    parser.add_argument(
+        "--sc-translation-max",
+        type=float,
+        default=DOC_LIMITS["sc_translation_max"],
+        help="SC rail translation maximum (meters).",
+    )
     return parser.parse_args()
 
 
@@ -132,9 +190,21 @@ def main() -> None:
             task_type = rng.choice(["sfp", "sc"])
 
         if task_type == "sfp":
-            generated_trials[trial_name] = _build_sfp_trial(template_sfp, rng)
+            generated_trials[trial_name] = _build_sfp_trial(
+                template_sfp,
+                rng,
+                nic_translation_min=args.nic_translation_min,
+                nic_translation_max=args.nic_translation_max,
+                nic_yaw_min=args.nic_yaw_min,
+                nic_yaw_max=args.nic_yaw_max,
+            )
         else:
-            generated_trials[trial_name] = _build_sc_trial(template_sc, rng)
+            generated_trials[trial_name] = _build_sc_trial(
+                template_sc,
+                rng,
+                sc_translation_min=args.sc_translation_min,
+                sc_translation_max=args.sc_translation_max,
+            )
 
     config["trials"] = generated_trials
 

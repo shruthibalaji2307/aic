@@ -162,7 +162,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: -0.0208
+            translation: -0.0096
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -344,7 +344,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: 0.0242
+            translation: 0.0139
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -526,7 +526,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: -0.0205
+            translation: -0.0094
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -708,7 +708,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: -0.0001
+            translation: 0.0012
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -888,7 +888,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: 0.0232
+            translation: 0.0134
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -1076,7 +1076,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: 0.0135
+            translation: 0.0083
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -1264,7 +1264,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: -0.0445
+            translation: -0.0219
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -1452,7 +1452,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: -0.0102
+            translation: -0.004
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -1642,7 +1642,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: -0.0573
+            translation: -0.0286
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -1818,7 +1818,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: 0.0018
+            translation: 0.0023
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -2000,7 +2000,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: -0.0103
+            translation: -0.0041
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -2180,7 +2180,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: -0.0205
+            translation: -0.0094
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -2368,7 +2368,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: 0.0479
+            translation: 0.0263
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -2550,7 +2550,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: 0.0469
+            translation: 0.0258
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -2740,7 +2740,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: -0.0208
+            translation: -0.0096
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -2920,7 +2920,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: 0.0195
+            translation: 0.0115
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -3108,7 +3108,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: -0.016
+            translation: -0.0071
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -3298,7 +3298,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: -0.0537
+            translation: -0.0267
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -3480,7 +3480,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: -0.0024
+            translation: 0.0001
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -3660,7 +3660,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: -0.0225
+            translation: -0.0104
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -3842,7 +3842,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: -0.0231
+            translation: -0.0108
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -4030,7 +4030,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: -0.0372
+            translation: -0.0181
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -4220,7 +4220,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: 0.0105
+            translation: 0.0068
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -4396,7 +4396,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: -0.0005
+            translation: 0.001
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -4578,7 +4578,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: 0.0029
+            translation: 0.0028
             roll: 0.0
             pitch: 0.0
             yaw: 0.0

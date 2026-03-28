@@ -34,6 +34,15 @@ pixi run aic-generate-qualification-config \
   --mode random
 ```
 
+By default, this generator now uses the task-board limits documented in `docs/task_board_description.md`:
+
+- NIC translation: `[-0.0215, 0.0234]` m
+- NIC yaw: `[-0.1745, +0.1745]` rad (±10 deg)
+- SC translation: `[-0.06, 0.055]` m
+
+You can override them via CLI flags:
+`--nic-translation-min/max`, `--nic-yaw-min/max`, `--sc-translation-min/max`.
+
 **Terminal B — inside Distrobox `aic_eval`:** start sim + engine with **ground truth** (needed for CheatCode) and your YAML:
 
 ```bash

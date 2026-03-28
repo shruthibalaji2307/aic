@@ -56,10 +56,10 @@ trials:
           entity_present: true
           entity_name: nic_card_0
           entity_pose:
-            translation: -0.0176
+            translation: -0.0172
             roll: 0.0
             pitch: 0.0
-            yaw: -0.0324
+            yaw: -0.0334
         nic_rail_1:
           entity_present: false
         nic_rail_2:
@@ -162,7 +162,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: -0.0208
+            translation: -0.0175
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -240,10 +240,10 @@ trials:
           entity_present: true
           entity_name: nic_card_1
           entity_pose:
-            translation: -0.0214
+            translation: -0.0209
             roll: 0.0
             pitch: 0.0
-            yaw: -0.0222
+            yaw: -0.0229
         nic_rail_2:
           entity_present: false
         nic_rail_3:
@@ -344,7 +344,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: 0.0242
+            translation: 0.0255
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -422,10 +422,10 @@ trials:
           entity_present: true
           entity_name: nic_card_1
           entity_pose:
-            translation: -0.0084
+            translation: -0.0082
             roll: 0.0
             pitch: 0.0
-            yaw: -0.0242
+            yaw: -0.025
         nic_rail_2:
           entity_present: false
         nic_rail_3:
@@ -526,7 +526,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: -0.0205
+            translation: -0.0172
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -610,10 +610,10 @@ trials:
           entity_present: true
           entity_name: nic_card_4
           entity_pose:
-            translation: -0.0209
+            translation: -0.0204
             roll: 0.0
             pitch: 0.0
-            yaw: 0.1372
+            yaw: 0.1415
         sc_rail_0:
           entity_present: true
           entity_name: sc_mount_0
@@ -708,7 +708,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: -0.0001
+            translation: 0.0023
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -786,10 +786,10 @@ trials:
           entity_present: true
           entity_name: nic_card_1
           entity_pose:
-            translation: 0.0195
+            translation: 0.0192
             roll: 0.0
             pitch: 0.0
-            yaw: 0.0552
+            yaw: 0.0569
         nic_rail_2:
           entity_present: false
         nic_rail_3:
@@ -888,7 +888,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: 0.0232
+            translation: 0.0245
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -980,10 +980,10 @@ trials:
           entity_present: true
           entity_name: nic_card_4
           entity_pose:
-            translation: 0.0158
+            translation: 0.0156
             roll: 0.0
             pitch: 0.0
-            yaw: -0.0476
+            yaw: -0.0491
         sc_rail_0:
           entity_present: true
           entity_name: sc_mount_0
@@ -1076,7 +1076,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: 0.0135
+            translation: 0.0153
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -1162,10 +1162,10 @@ trials:
           entity_present: true
           entity_name: nic_card_1
           entity_pose:
-            translation: 0.0225
+            translation: 0.0221
             roll: 0.0
             pitch: 0.0
-            yaw: -0.1209
+            yaw: -0.1246
         nic_rail_2:
           entity_present: false
         nic_rail_3:
@@ -1264,7 +1264,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: -0.0445
+            translation: -0.0402
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -1352,10 +1352,10 @@ trials:
           entity_present: true
           entity_name: nic_card_2
           entity_pose:
-            translation: 0.007
+            translation: 0.0069
             roll: 0.0
             pitch: 0.0
-            yaw: -0.1744
+            yaw: -0.1799
         nic_rail_3:
           entity_present: false
         nic_rail_4:
@@ -1452,7 +1452,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: -0.0102
+            translation: -0.0073
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -1542,10 +1542,10 @@ trials:
           entity_present: true
           entity_name: nic_card_3
           entity_pose:
-            translation: 0.0227
+            translation: 0.0224
             roll: 0.0
             pitch: 0.0
-            yaw: -0.0829
+            yaw: -0.0855
         nic_rail_4:
           entity_present: false
         sc_rail_0:
@@ -1642,7 +1642,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: -0.0573
+            translation: -0.0524
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -1712,10 +1712,10 @@ trials:
           entity_present: true
           entity_name: nic_card_0
           entity_pose:
-            translation: -0.0048
+            translation: -0.0046
             roll: 0.0
             pitch: 0.0
-            yaw: -0.0925
+            yaw: -0.0954
         nic_rail_1:
           entity_present: false
         nic_rail_2:
@@ -1818,7 +1818,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: 0.0018
+            translation: 0.0041
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -1900,10 +1900,10 @@ trials:
           entity_present: true
           entity_name: nic_card_3
           entity_pose:
-            translation: -0.0158
+            translation: -0.0154
             roll: 0.0
             pitch: 0.0
-            yaw: 0.1658
+            yaw: 0.171
         nic_rail_4:
           entity_present: false
         sc_rail_0:
@@ -2000,7 +2000,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: -0.0103
+            translation: -0.0075
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -2082,10 +2082,10 @@ trials:
           entity_present: true
           entity_name: nic_card_3
           entity_pose:
-            translation: -0.0079
+            translation: -0.0076
             roll: 0.0
             pitch: 0.0
-            yaw: 0.1016
+            yaw: 0.1048
         nic_rail_4:
           entity_present: false
         sc_rail_0:
@@ -2180,7 +2180,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: -0.0205
+            translation: -0.0172
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -2272,10 +2272,10 @@ trials:
           entity_present: true
           entity_name: nic_card_4
           entity_pose:
-            translation: -0.0173
+            translation: -0.0169
             roll: 0.0
             pitch: 0.0
-            yaw: 0.15
+            yaw: 0.1547
         sc_rail_0:
           entity_present: true
           entity_name: sc_mount_0
@@ -2368,7 +2368,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: 0.0479
+            translation: 0.0482
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -2446,10 +2446,10 @@ trials:
           entity_present: true
           entity_name: nic_card_0
           entity_pose:
-            translation: -0.0095
+            translation: -0.0092
             roll: 0.0
             pitch: 0.0
-            yaw: -0.0939
+            yaw: -0.0969
         nic_rail_1:
           entity_present: false
         nic_rail_2:
@@ -2550,7 +2550,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: 0.0469
+            translation: 0.0472
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -2640,10 +2640,10 @@ trials:
           entity_present: true
           entity_name: nic_card_3
           entity_pose:
-            translation: 0.0113
+            translation: 0.0111
             roll: 0.0
             pitch: 0.0
-            yaw: 0.0967
+            yaw: 0.0997
         nic_rail_4:
           entity_present: false
         sc_rail_0:
@@ -2740,7 +2740,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: -0.0208
+            translation: -0.0175
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -2824,10 +2824,10 @@ trials:
           entity_present: true
           entity_name: nic_card_4
           entity_pose:
-            translation: 0.0188
+            translation: 0.0185
             roll: 0.0
             pitch: 0.0
-            yaw: 0.1014
+            yaw: 0.1046
         sc_rail_0:
           entity_present: true
           entity_name: sc_mount_0
@@ -2920,7 +2920,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: 0.0195
+            translation: 0.021
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -3010,10 +3010,10 @@ trials:
           entity_present: true
           entity_name: nic_card_3
           entity_pose:
-            translation: -0.0054
+            translation: -0.0052
             roll: 0.0
             pitch: 0.0
-            yaw: 0.0943
+            yaw: 0.0973
         nic_rail_4:
           entity_present: false
         sc_rail_0:
@@ -3108,7 +3108,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: -0.016
+            translation: -0.0129
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -3196,10 +3196,10 @@ trials:
           entity_present: true
           entity_name: nic_card_2
           entity_pose:
-            translation: 0.0169
+            translation: 0.0167
             roll: 0.0
             pitch: 0.0
-            yaw: -0.0431
+            yaw: -0.0445
         nic_rail_3:
           entity_present: false
         nic_rail_4:
@@ -3298,7 +3298,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: -0.0537
+            translation: -0.049
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -3380,10 +3380,10 @@ trials:
           entity_present: true
           entity_name: nic_card_3
           entity_pose:
-            translation: -0.0106
+            translation: -0.0103
             roll: 0.0
             pitch: 0.0
-            yaw: -0.0191
+            yaw: -0.0196
         nic_rail_4:
           entity_present: false
         sc_rail_0:
@@ -3480,7 +3480,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: -0.0024
+            translation: 0.0001
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -3558,10 +3558,10 @@ trials:
           entity_present: true
           entity_name: nic_card_1
           entity_pose:
-            translation: -0.0206
+            translation: -0.0201
             roll: 0.0
             pitch: 0.0
-            yaw: 0.0559
+            yaw: 0.0577
         nic_rail_2:
           entity_present: false
         nic_rail_3:
@@ -3660,7 +3660,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: -0.0225
+            translation: -0.0192
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -3738,10 +3738,10 @@ trials:
           entity_present: true
           entity_name: nic_card_0
           entity_pose:
-            translation: 0.0011
+            translation: 0.0012
             roll: 0.0
             pitch: 0.0
-            yaw: 0.1428
+            yaw: 0.1473
         nic_rail_1:
           entity_present: false
         nic_rail_2:
@@ -3842,7 +3842,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: -0.0231
+            translation: -0.0197
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -3930,10 +3930,10 @@ trials:
           entity_present: true
           entity_name: nic_card_2
           entity_pose:
-            translation: -0.014
+            translation: -0.0136
             roll: 0.0
             pitch: 0.0
-            yaw: -0.0293
+            yaw: -0.0302
         nic_rail_3:
           entity_present: false
         nic_rail_4:
@@ -4030,7 +4030,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_0
           entity_pose:
-            translation: -0.0372
+            translation: -0.0332
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -4122,10 +4122,10 @@ trials:
           entity_present: true
           entity_name: nic_card_4
           entity_pose:
-            translation: -0.0079
+            translation: -0.0077
             roll: 0.0
             pitch: 0.0
-            yaw: 0.1276
+            yaw: 0.1316
         sc_rail_0:
           entity_present: true
           entity_name: sc_mount_0
@@ -4220,7 +4220,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: 0.0105
+            translation: 0.0124
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -4290,10 +4290,10 @@ trials:
           entity_present: true
           entity_name: nic_card_0
           entity_pose:
-            translation: -0.0033
+            translation: -0.0031
             roll: 0.0
             pitch: 0.0
-            yaw: 0.1018
+            yaw: 0.1049
         nic_rail_1:
           entity_present: false
         nic_rail_2:
@@ -4396,7 +4396,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: -0.0005
+            translation: 0.0019
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
@@ -4474,10 +4474,10 @@ trials:
           entity_present: true
           entity_name: nic_card_1
           entity_pose:
-            translation: -0.0105
+            translation: -0.0102
             roll: 0.0
             pitch: 0.0
-            yaw: -0.1019
+            yaw: -0.1051
         nic_rail_2:
           entity_present: false
         nic_rail_3:
@@ -4578,7 +4578,7 @@ trials:
           entity_present: true
           entity_name: sc_mount_1
           entity_pose:
-            translation: 0.0029
+            translation: 0.0052
             roll: 0.0
             pitch: 0.0
             yaw: 0.0
