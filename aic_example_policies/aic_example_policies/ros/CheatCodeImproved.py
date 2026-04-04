@@ -219,8 +219,10 @@ class CheatCodeImproved(Policy):
         z_offset = 0.2
 
         # Over five seconds, smoothly interpolate from the current position to
-        # a position above the port.
-        for t in range(0, 100):
+        # a position above the port. Advance the schedule only after a successful
+        # command so TF drops do not desync motion from the interpolation progress.
+        t = 0
+        while t < 100:
             interp_fraction = t / 100.0
             port_transform = self._lookup_port_transform(port_frame)
             if port_transform is None:
@@ -239,15 +241,18 @@ class CheatCodeImproved(Policy):
                 )
             except TransformException as ex:
                 self.get_logger().warn(f"TF lookup failed during interpolation: {ex}")
+                self.sleep_for(0.05)
+                continue
+            t += 1
             self.sleep_for(0.05)
 
-        # Descend until the cable is inserted into the port.
+        # Descend until the cable is inserted into the port. Only step z_offset
+        # after a successful command so skipped ticks do not advance "virtual" depth.
         while True:
             if z_offset < -0.015:
                 break
 
-            z_offset -= 0.0005
-            self.get_logger().info(f"z_offset: {z_offset:0.5}")
+            next_z = z_offset - 0.0005
             port_transform = self._lookup_port_transform(port_frame)
             if port_transform is None:
                 self.sleep_for(0.05)
@@ -255,10 +260,15 @@ class CheatCodeImproved(Policy):
             try:
                 self.set_pose_target(
                     move_robot=move_robot,
-                    pose=self.calc_gripper_pose(port_transform, z_offset=z_offset),
+                    pose=self.calc_gripper_pose(port_transform, z_offset=next_z),
                 )
             except TransformException as ex:
                 self.get_logger().warn(f"TF lookup failed during insertion: {ex}")
+                self.sleep_for(0.05)
+                continue
+
+            z_offset = next_z
+            self.get_logger().info(f"z_offset: {z_offset:0.5}")
             self.sleep_for(0.05)
 
         self.get_logger().info("Waiting for connector to stabilize...")
