@@ -33,6 +33,13 @@ from transforms3d._gohlketransforms import quaternion_multiply, quaternion_slerp
 
 QuaternionTuple = tuple[float, float, float, float]
 
+# Softer Cartesian impedance during insertion/descent only (vs Policy.set_pose_target
+# defaults 90/90/90 translational, 50/50/50 rotational). Reduces jamming on
+# port chamfers by allowing slight compliance in X/Y; Z kept slightly stiffer
+# than X/Y to retain downward motion.
+_INSERT_STIFFNESS = [45.0, 45.0, 55.0, 35.0, 35.0, 35.0]
+_INSERT_DAMPING = [38.0, 38.0, 42.0, 18.0, 18.0, 18.0]
+
 
 class CheatCodeImproved(Policy):
     def __init__(self, parent_node):
@@ -261,6 +268,8 @@ class CheatCodeImproved(Policy):
                 self.set_pose_target(
                     move_robot=move_robot,
                     pose=self.calc_gripper_pose(port_transform, z_offset=next_z),
+                    stiffness=_INSERT_STIFFNESS,
+                    damping=_INSERT_DAMPING,
                 )
             except TransformException as ex:
                 self.get_logger().warn(f"TF lookup failed during insertion: {ex}")
