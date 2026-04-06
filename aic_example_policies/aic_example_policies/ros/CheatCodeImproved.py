@@ -40,6 +40,19 @@ QuaternionTuple = tuple[float, float, float, float]
 _INSERT_STIFFNESS = [45.0, 45.0, 55.0, 35.0, 35.0, 35.0]
 _INSERT_DAMPING = [38.0, 38.0, 42.0, 18.0, 18.0, 18.0]
 
+# Plug-in-gripper readiness: max distance (m) from gripper/tcp to plug tip
+# that we consider "cable is properly attached and settled." Grasp offsets in
+# sample configs are ~0.04 m; allow headroom for cable flex.
+_PLUG_GRIPPER_MAX_DIST = 0.10
+_PLUG_READY_CONSECUTIVE = 5  # consecutive OK readings required
+_PLUG_READY_TIMEOUT_SEC = 15.0
+
+# Small circular XY dither ("wiggle") applied during descent when close to
+# the port mouth.  Helps the plug slide off the chamfer/lip into the opening.
+_WIGGLE_Z_THRESHOLD = 0.02  # activate when z_offset drops below this (m)
+_WIGGLE_AMPLITUDE = 0.0008  # radius of the circular motion (m)
+_WIGGLE_PERIOD_STEPS = 40   # descent steps for one full circle
+
 
 class CheatCodeImproved(Policy):
     def __init__(self, parent_node):
@@ -73,6 +86,49 @@ class CheatCodeImproved(Policy):
                 self.sleep_for(0.1)
         self.get_logger().error(
             f"Transform '{source_frame}' not available after {timeout_sec}s"
+        )
+        return False
+
+    def _wait_for_plug_in_gripper(
+        self, cable_tip_frame: str
+    ) -> bool:
+        """Block until plug tip is close to gripper/tcp for several consecutive
+        readings, meaning the cable is attached and settled.  Returns False on
+        timeout."""
+        start = self.time_now()
+        timeout = Duration(seconds=_PLUG_READY_TIMEOUT_SEC)
+        consecutive_ok = 0
+        while (self.time_now() - start) < timeout:
+            try:
+                tf = self._parent_node._tf_buffer.lookup_transform(
+                    "gripper/tcp",
+                    cable_tip_frame,
+                    Time(),
+                )
+                dx = tf.transform.translation.x
+                dy = tf.transform.translation.y
+                dz = tf.transform.translation.z
+                dist = (dx * dx + dy * dy + dz * dz) ** 0.5
+                if dist <= _PLUG_GRIPPER_MAX_DIST:
+                    consecutive_ok += 1
+                    if consecutive_ok >= _PLUG_READY_CONSECUTIVE:
+                        self.get_logger().info(
+                            f"Plug settled in gripper (dist={dist:.4f} m, "
+                            f"{consecutive_ok} consecutive OK readings)."
+                        )
+                        return True
+                else:
+                    if consecutive_ok > 0:
+                        self.get_logger().info(
+                            f"Plug–gripper distance reset ({dist:.4f} m > "
+                            f"{_PLUG_GRIPPER_MAX_DIST} m), waiting..."
+                        )
+                    consecutive_ok = 0
+            except TransformException:
+                consecutive_ok = 0
+            self.sleep_for(0.05)
+        self.get_logger().error(
+            f"Plug did not settle in gripper within {_PLUG_READY_TIMEOUT_SEC}s"
         )
         return False
 
@@ -223,6 +279,13 @@ class CheatCodeImproved(Policy):
             if not self._wait_for_tf("base_link", frame):
                 return False
 
+        # Ensure the plug is actually attached and settled in the gripper
+        # before commanding any motion (avoids bad first targets from stale
+        # or pre-attach TF).
+        if not self._wait_for_plug_in_gripper(cable_tip_frame):
+            self.get_logger().error("Aborting: plug not settled in gripper.")
+            return False
+
         z_offset = 0.2
 
         # Over five seconds, smoothly interpolate from the current position to
@@ -255,6 +318,9 @@ class CheatCodeImproved(Policy):
 
         # Descend until the cable is inserted into the port. Only step z_offset
         # after a successful command so skipped ticks do not advance "virtual" depth.
+        # A small circular XY dither is added near the port mouth to help the
+        # plug find the opening if it lands on the chamfer.
+        descent_step = 0
         while True:
             if z_offset < -0.015:
                 break
@@ -265,9 +331,14 @@ class CheatCodeImproved(Policy):
                 self.sleep_for(0.05)
                 continue
             try:
+                pose = self.calc_gripper_pose(port_transform, z_offset=next_z)
+                if next_z < _WIGGLE_Z_THRESHOLD:
+                    angle = 2.0 * np.pi * descent_step / _WIGGLE_PERIOD_STEPS
+                    pose.position.x += _WIGGLE_AMPLITUDE * np.cos(angle)
+                    pose.position.y += _WIGGLE_AMPLITUDE * np.sin(angle)
                 self.set_pose_target(
                     move_robot=move_robot,
-                    pose=self.calc_gripper_pose(port_transform, z_offset=next_z),
+                    pose=pose,
                     stiffness=_INSERT_STIFFNESS,
                     damping=_INSERT_DAMPING,
                 )
@@ -277,6 +348,7 @@ class CheatCodeImproved(Policy):
                 continue
 
             z_offset = next_z
+            descent_step += 1
             self.get_logger().info(f"z_offset: {z_offset:0.5}")
             self.sleep_for(0.05)
 
