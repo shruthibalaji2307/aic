@@ -201,6 +201,14 @@ def _parse_args() -> argparse.Namespace:
             "before board-pose randomization (step 3)."
         ),
     )
+    ablation.add_argument(
+        "--sfp-only",
+        action="store_true",
+        help=(
+            "Only generate SFP (NIC rail) insertion trials. Ignores --mode (no SC trials). "
+            "Use with --num-trials N for N independent randomized SFP trials."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -226,6 +234,17 @@ def main() -> None:
                 sc_translation_min=args.sc_translation_min,
                 sc_translation_max=args.sc_translation_max,
                 randomize_board_pose=False,
+            )
+    elif args.sfp_only:
+        for idx in range(args.num_trials):
+            trial_name = f"trial_{idx + 1}"
+            generated_trials[trial_name] = _build_sfp_trial(
+                template_sfp,
+                rng,
+                nic_translation_min=args.nic_translation_min,
+                nic_translation_max=args.nic_translation_max,
+                nic_yaw_min=args.nic_yaw_min,
+                nic_yaw_max=args.nic_yaw_max,
             )
     else:
         for idx in range(args.num_trials):
@@ -261,6 +280,8 @@ def main() -> None:
         mode_label = "ablation_step1"
     elif args.ablation_step2:
         mode_label = "ablation_step2"
+    elif args.sfp_only:
+        mode_label = "sfp_only"
     else:
         mode_label = args.mode
     print(f"Trials: {len(generated_trials)} | Seed: {args.seed} | Mode: {mode_label}")

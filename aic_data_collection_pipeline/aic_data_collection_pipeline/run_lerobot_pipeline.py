@@ -217,6 +217,14 @@ def _parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--policy",
+        default="aic_example_policies.ros.CheatCode",
+        help=(
+            "Python import path for the policy class passed to aic_model "
+            "(e.g. aic_example_policies.ros.CheatCodeImproved)."
+        ),
+    )
+    parser.add_argument(
         "--launch-cheatcode-on-host",
         action="store_true",
         help=(
@@ -232,6 +240,16 @@ def _parse_args() -> argparse.Namespace:
             "Pass --resume=true to lerobot-record: append to an existing dataset at "
             "~/.cache/huggingface/lerobot/<repo_id> instead of creating a new folder "
             "(avoids FileExistsError when reusing the same --dataset-repo-id)."
+        ),
+    )
+    parser.add_argument(
+        "--skip-lerobot-record",
+        action="store_true",
+        help=(
+            "Do not start lerobot-record; no dataset is written or pushed. "
+            "With --eval-in-container, only starts aic_model if "
+            "--launch-cheatcode-on-host is set, then waits until Ctrl+C. "
+            "Use for policy-only smoke tests without LeRobot."
         ),
     )
     return parser.parse_args()
@@ -292,31 +310,45 @@ def _run_lerobot_record_only(
             "-p",
             "use_sim_time:=true",
             "-p",
-            "policy:=aic_example_policies.ros.CheatCode",
+            f"policy:={args.policy}",
         ]
         model_proc = _run_cmd(model_cmd, env=env, cwd=workspace)
         _wait_or_terminate(model_proc, "aic_model", 3.0)
 
     try:
         time.sleep(args.startup_wait_sec)
-        record_cmd = _lerobot_record_cmd(workspace, dataset_repo_id, args)
-        print(
-            "\n[info] lerobot-record key controls: Right Arrow=next episode, "
-            "Left Arrow=redo episode, ESC=stop."
-        )
-        record_proc = _run_cmd(record_cmd, env=env, cwd=workspace)
-        try:
-            record_code = record_proc.wait()
-            if record_code != 0:
-                print(
-                    f"[error] lerobot-record exited with code {record_code}. "
-                    "If you saw FileExistsError on the dataset folder, remove it or "
-                    "re-run with --lerobot-resume.",
-                    file=sys.stderr,
-                )
-                return 1
-        finally:
-            _terminate(record_proc, "lerobot-record")
+        if args.skip_lerobot_record:
+            print(
+                "\n[info] --skip-lerobot-record: not starting lerobot-record "
+                "(no dataset recording or Hub push). "
+                "Leave this process running while the container runs trials; "
+                "press Ctrl+C to stop aic_model and exit."
+            )
+            try:
+                while True:
+                    time.sleep(1.0)
+            except KeyboardInterrupt:
+                print("\n[info] Interrupted by user.")
+                return 130
+        else:
+            record_cmd = _lerobot_record_cmd(workspace, dataset_repo_id, args)
+            print(
+                "\n[info] lerobot-record key controls: Right Arrow=next episode, "
+                "Left Arrow=redo episode, ESC=stop."
+            )
+            record_proc = _run_cmd(record_cmd, env=env, cwd=workspace)
+            try:
+                record_code = record_proc.wait()
+                if record_code != 0:
+                    print(
+                        f"[error] lerobot-record exited with code {record_code}. "
+                        "If you saw FileExistsError on the dataset folder, remove it or "
+                        "re-run with --lerobot-resume.",
+                        file=sys.stderr,
+                    )
+                    return 1
+            finally:
+                _terminate(record_proc, "lerobot-record")
     except KeyboardInterrupt:
         print("\n[info] Interrupted by user.")
         return 130
@@ -344,10 +376,11 @@ def main() -> int | None:
         )
         return 1
 
-    dir_err = _check_lerobot_dataset_dir(dataset_repo_id, args.lerobot_resume)
-    if dir_err:
-        print(f"error: {dir_err}", file=sys.stderr)
-        return 1
+    if not args.skip_lerobot_record:
+        dir_err = _check_lerobot_dataset_dir(dataset_repo_id, args.lerobot_resume)
+        if dir_err:
+            print(f"error: {dir_err}", file=sys.stderr)
+            return 1
 
     if args.launch_cheatcode_on_host and not args.eval_in_container:
         print(
@@ -423,7 +456,7 @@ def main() -> int | None:
             "-p",
             "use_sim_time:=true",
             "-p",
-            "policy:=aic_example_policies.ros.CheatCode",
+            f"policy:={args.policy}",
         ],
         ros_setup,
     )
@@ -451,25 +484,37 @@ def main() -> int | None:
             _wait_or_terminate(sim_proc, "aic_gz_bringup", 8.0)
             time.sleep(args.startup_wait_sec)
 
-            # 3) Start lerobot-record with the command pattern from lerobot_robot_aic/README.md.
-            record_cmd = _lerobot_record_cmd(workspace, dataset_repo_id, args)
-            print(
-                "\n[info] lerobot-record key controls: Right Arrow=next episode, "
-                "Left Arrow=redo episode, ESC=stop."
-            )
-            record_proc = _run_cmd(record_cmd, env=env, cwd=workspace)
-            try:
-                record_code = record_proc.wait()
-                if record_code != 0:
-                    print(
-                        f"[error] lerobot-record exited with code {record_code}. "
-                        "If the dataset folder already exists, re-run with --lerobot-resume "
-                        "or delete ~/.cache/huggingface/lerobot/<your_repo_id>.",
-                        file=sys.stderr,
-                    )
-                    return 1
-            finally:
-                _terminate(record_proc, "lerobot-record")
+            # 3) Start lerobot-record (unless skipped).
+            if args.skip_lerobot_record:
+                print(
+                    "\n[info] --skip-lerobot-record: not starting lerobot-record. "
+                    "Press Ctrl+C to stop."
+                )
+                try:
+                    while True:
+                        time.sleep(1.0)
+                except KeyboardInterrupt:
+                    print("\n[info] Interrupted by user.")
+                    return 130
+            else:
+                record_cmd = _lerobot_record_cmd(workspace, dataset_repo_id, args)
+                print(
+                    "\n[info] lerobot-record key controls: Right Arrow=next episode, "
+                    "Left Arrow=redo episode, ESC=stop."
+                )
+                record_proc = _run_cmd(record_cmd, env=env, cwd=workspace)
+                try:
+                    record_code = record_proc.wait()
+                    if record_code != 0:
+                        print(
+                            f"[error] lerobot-record exited with code {record_code}. "
+                            "If the dataset folder already exists, re-run with --lerobot-resume "
+                            "or delete ~/.cache/huggingface/lerobot/<your_repo_id>.",
+                            file=sys.stderr,
+                        )
+                        return 1
+                finally:
+                    _terminate(record_proc, "lerobot-record")
         finally:
             _terminate(sim_proc, "aic_gz_bringup")
     except KeyboardInterrupt:
