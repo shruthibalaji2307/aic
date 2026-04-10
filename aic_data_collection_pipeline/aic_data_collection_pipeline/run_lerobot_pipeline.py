@@ -1,6 +1,11 @@
 import argparse
+import errno
+import fcntl
 import os
+import pty
+import re
 import shlex
+import select
 import signal
 import subprocess
 import sys
@@ -9,9 +14,12 @@ from pathlib import Path
 
 
 def _default_lerobot_dataset_root(dataset_repo_id: str) -> Path:
-    """Match lerobot: HF_LEROBOT_HOME / repo_id (see lerobot.utils.constants)."""
+    """Match lerobot.utils.constants: HF_LEROBOT_HOME / repo_id (LEROBOT_HOME is rejected)."""
     hf_home = Path(os.environ.get("HF_HOME", str(Path.home() / ".cache" / "huggingface")))
-    lerobot_home = Path(os.environ.get("LEROBOT_HOME", str(hf_home / "lerobot")))
+    default_lerobot = hf_home / "lerobot"
+    lerobot_home = Path(
+        os.environ.get("HF_LEROBOT_HOME", str(default_lerobot))
+    ).expanduser()
     return lerobot_home / dataset_repo_id
 
 
@@ -69,6 +77,132 @@ def _wait_or_terminate(
         return
     if proc.returncode not in (None, 0):
         raise RuntimeError(f"{name} exited early with code {proc.returncode}")
+
+
+def _parse_trial_score(line: str) -> float | None:
+    match = re.search(r"Finished scoring trial, total score is:\s*([0-9]+(?:\.[0-9]+)?)", line)
+    if not match:
+        return None
+    try:
+        return float(match.group(1))
+    except ValueError:
+        return None
+
+
+def _send_lerobot_arrow_key(master_fd: int, key: str) -> None:
+    keys = {"right": b"\x1b[C", "left": b"\x1b[D"}
+    try:
+        os.write(master_fd, keys[key])
+    except OSError:
+        # PTY closed if lerobot-record already exited.
+        pass
+
+
+def _run_lerobot_record_autogated(
+    workspace: Path,
+    env: dict[str, str],
+    args: argparse.Namespace,
+    dataset_repo_id: str,
+) -> int:
+    if args.container_engine_log is None:
+        print("error: --auto-gate-score requires --container-engine-log", file=sys.stderr)
+        return 1
+
+    engine_log = args.container_engine_log.resolve()
+    if not engine_log.is_file():
+        print(f"error: --container-engine-log does not exist: {engine_log}", file=sys.stderr)
+        return 1
+
+    record_cmd = _lerobot_record_cmd(workspace, dataset_repo_id, args)
+    print(
+        "\n[info] Auto-gating enabled:\n"
+        f"       score >  {args.auto_gate_score:.3f} -> keep (Right Arrow)\n"
+        f"       score <= {args.auto_gate_score:.3f} -> discard (Left Arrow)"
+    )
+
+    master_fd, slave_fd = pty.openpty()
+    flags = fcntl.fcntl(master_fd, fcntl.F_GETFL)
+    fcntl.fcntl(master_fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
+    print(f"\n[launch] {' '.join(record_cmd)}")
+    record_proc = subprocess.Popen(
+        record_cmd,
+        env=env,
+        cwd=str(workspace),
+        stdin=slave_fd,
+        stdout=slave_fd,
+        stderr=slave_fd,
+        close_fds=True,
+    )
+    os.close(slave_fd)
+
+    log_fp = engine_log.open("r", encoding="utf-8", errors="ignore")
+    log_fp.seek(0, os.SEEK_END)
+    pty_slave_closed = False
+
+    try:
+        while True:
+            if not pty_slave_closed:
+                ready, _, _ = select.select([master_fd], [], [], 0.05)
+            else:
+                time.sleep(0.05)
+                ready = []
+            if ready:
+                try:
+                    data = os.read(master_fd, 65536)
+                except BlockingIOError:
+                    data = b""
+                except OSError as exc:
+                    # Linux: EIO when slave (lerobot-record) closed the PTY.
+                    if exc.errno in (errno.EIO, errno.EINVAL):
+                        data = b""
+                        pty_slave_closed = True
+                    else:
+                        raise
+                if data:
+                    sys.stdout.buffer.write(data)
+                    sys.stdout.buffer.flush()
+
+            while True:
+                pos = log_fp.tell()
+                line = log_fp.readline()
+                if not line:
+                    log_fp.seek(pos)
+                    break
+                score = _parse_trial_score(line)
+                if score is None:
+                    continue
+                if score > args.auto_gate_score:
+                    print(
+                        f"\n[gate] score={score:.3f} > {args.auto_gate_score:.3f} "
+                        "-> keep episode and start next."
+                    )
+                    _send_lerobot_arrow_key(master_fd, "right")
+                else:
+                    print(
+                        f"\n[gate] score={score:.3f} <= {args.auto_gate_score:.3f} "
+                        "-> discard episode and start next."
+                    )
+                    _send_lerobot_arrow_key(master_fd, "left")
+
+            code = record_proc.poll()
+            if code is not None:
+                if code != 0:
+                    print(
+                        f"[error] lerobot-record exited with code {code}. "
+                        "If you saw FileExistsError on the dataset folder, remove it or "
+                        "re-run with --lerobot-resume.",
+                        file=sys.stderr,
+                    )
+                    return 1
+                return 0
+    finally:
+        log_fp.close()
+        _terminate(record_proc, "lerobot-record")
+        try:
+            os.close(master_fd)
+        except OSError:
+            pass
 
 
 def _terminate(
@@ -252,6 +386,33 @@ def _parse_args() -> argparse.Namespace:
             "Use for policy-only smoke tests without LeRobot."
         ),
     )
+    parser.add_argument(
+        "--container-engine-log",
+        type=Path,
+        default=None,
+        help=(
+            "Path to terminal log file containing aic_engine output. "
+            "Used by --auto-gate-score."
+        ),
+    )
+    parser.add_argument(
+        "--auto-gate-score",
+        type=float,
+        default=None,
+        help=(
+            "Auto-gate episodes by trial score from --container-engine-log. "
+            "score > threshold keeps the episode, else discards it."
+        ),
+    )
+    parser.add_argument(
+        "--lerobot-home",
+        type=Path,
+        default=None,
+        help=(
+            "Custom local LeRobot dataset root (sets HF_LEROBOT_HOME). "
+            "Default: $HF_HOME/lerobot (~/.cache/huggingface/lerobot)."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -287,6 +448,25 @@ def _resolve_dataset_repo_id(args: argparse.Namespace) -> str | None:
         return args.dataset_repo_id
     if args.eval_in_container:
         return "local/aic_cable_insert"
+    return None
+
+
+def _autogate_prereq_error(args: argparse.Namespace) -> str | None:
+    """Fail fast before aic_model / sim start so we do not SIGTERM mid-trial."""
+    if args.skip_lerobot_record or args.auto_gate_score is None:
+        return None
+    if args.container_engine_log is None:
+        return "--auto-gate-score requires --container-engine-log PATH"
+    log_path = args.container_engine_log.expanduser().resolve()
+    if not log_path.is_file():
+        return (
+            f"--container-engine-log must be an existing file: {log_path}\n"
+            "Fix: create the file first, then ensure aic_engine logs are written there, e.g.\n"
+            "  mkdir -p ~/logs && touch ~/logs/aic_engine.log\n"
+            "  # in the container terminal: script -fa ~/logs/aic_engine.log\n"
+            "  # or: /entrypoint.sh ... 2>&1 | tee -a ~/logs/aic_engine.log\n"
+            "Then pass: --container-engine-log ~/logs/aic_engine.log"
+        )
     return None
 
 
@@ -331,6 +511,8 @@ def _run_lerobot_record_only(
                 print("\n[info] Interrupted by user.")
                 return 130
         else:
+            if args.auto_gate_score is not None:
+                return _run_lerobot_record_autogated(workspace, env, args, dataset_repo_id)
             record_cmd = _lerobot_record_cmd(workspace, dataset_repo_id, args)
             print(
                 "\n[info] lerobot-record key controls: Right Arrow=next episode, "
@@ -360,6 +542,10 @@ def _run_lerobot_record_only(
 
 def main() -> int | None:
     args = _parse_args()
+    if args.lerobot_home is not None:
+        os.environ["HF_LEROBOT_HOME"] = str(args.lerobot_home.expanduser().resolve())
+    # LeRobot 0.4+ aborts if LEROBOT_HOME is set (deprecated name).
+    os.environ.pop("LEROBOT_HOME", None)
     workspace = args.workspace_dir.resolve()
     config_path = args.engine_config.resolve()
     results_dir = args.results_dir.resolve()
@@ -376,6 +562,15 @@ def main() -> int | None:
         )
         return 1
 
+    if dataset_repo_id.startswith("/"):
+        print(
+            "error: --dataset-repo-id must be a LeRobot repo id (e.g. local/sample_1), "
+            "not a filesystem path. On disk: HF_LEROBOT_HOME/<repo_id>/.\n"
+            f"Example root: {_default_lerobot_dataset_root('local/sample_1').parent}",
+            file=sys.stderr,
+        )
+        return 1
+
     if not args.skip_lerobot_record:
         dir_err = _check_lerobot_dataset_dir(dataset_repo_id, args.lerobot_resume)
         if dir_err:
@@ -387,6 +582,11 @@ def main() -> int | None:
             "error: --launch-cheatcode-on-host requires --eval-in-container.",
             file=sys.stderr,
         )
+        return 1
+
+    ag_err = _autogate_prereq_error(args)
+    if ag_err:
+        print(f"error: {ag_err}", file=sys.stderr)
         return 1
 
     if args.eval_in_container:
@@ -497,6 +697,10 @@ def main() -> int | None:
                     print("\n[info] Interrupted by user.")
                     return 130
             else:
+                if args.auto_gate_score is not None:
+                    return _run_lerobot_record_autogated(
+                        workspace, env, args, dataset_repo_id
+                    )
                 record_cmd = _lerobot_record_cmd(workspace, dataset_repo_id, args)
                 print(
                     "\n[info] lerobot-record key controls: Right Arrow=next episode, "
