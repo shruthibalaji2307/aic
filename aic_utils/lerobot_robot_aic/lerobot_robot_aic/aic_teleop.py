@@ -18,8 +18,10 @@ from dataclasses import dataclass, field
 from threading import Thread
 from typing import Any, cast
 
+import numpy as np
 import pyspacemouse
 import rclpy
+from aic_control_interfaces.msg import ControllerState, MotionUpdate
 from geometry_msgs.msg import Twist
 from lerobot.teleoperators import Teleoperator, TeleoperatorConfig
 from lerobot.teleoperators.keyboard import (
@@ -340,3 +342,192 @@ class AICSpaceMouseTeleop(Teleoperator):
             self._device.close()
         self._is_connected = False
         pass
+
+
+@TeleoperatorConfig.register_subclass("aic_cheatcode_observer")
+@dataclass(kw_only=True)
+class AICCheatCodeObserverTeleopConfig(TeleoperatorConfig):
+    pass
+
+
+class AICCheatCodeObserverTeleop(Teleoperator):
+    """Observes CheatCode's pose commands on /aic_controller/pose_commands and
+    the current TCP pose from /aic_controller/controller_state, then records
+    their RELATIVE DELTA as the action:
+
+        linear.[x,y,z]  = target_position - current_position  (metres, base_link frame)
+        angular.[x,y,z] = axis-angle of (q_target * q_current^{-1})  (radians)
+
+    This 6-dim relative representation matches MotionUpdateActionDict and is
+    directly compatible with RunACT.py inference (which sends it as MODE_VELOCITY).
+    Because it is relative to the current TCP, it generalises across randomised
+    task-board positions — unlike recording absolute pose targets.
+    Use with --robot.observe_only=true to prevent lerobot from interfering.
+    """
+
+    def __init__(self, config: AICCheatCodeObserverTeleopConfig):
+        super().__init__(config)
+        self.config = config
+        self._is_connected = False
+        self._node = None
+        self._executor = None
+        self._executor_thread = None
+        self._pose_sub = None
+        self._state_sub = None
+        self._last_target_pose = None   # geometry_msgs/Pose from pose_commands
+        self._last_current_pose = None  # geometry_msgs/Pose from controller_state
+        self._last_action: MotionUpdateActionDict = {
+            "linear.x": 0.0,
+            "linear.y": 0.0,
+            "linear.z": 0.0,
+            "angular.x": 0.0,
+            "angular.y": 0.0,
+            "angular.z": 0.0,
+        }
+
+    # ------------------------------------------------------------------
+    # Quaternion helpers (no external dependency beyond numpy)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _quat_inverse(q: np.ndarray) -> np.ndarray:
+        """Inverse of a unit quaternion [x, y, z, w]."""
+        return np.array([-q[0], -q[1], -q[2], q[3]])
+
+    @staticmethod
+    def _quat_multiply(q1: np.ndarray, q2: np.ndarray) -> np.ndarray:
+        """Hamilton product of two quaternions stored as [x, y, z, w]."""
+        x1, y1, z1, w1 = q1
+        x2, y2, z2, w2 = q2
+        return np.array([
+            w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
+            w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2,
+            w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2,
+            w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2,
+        ])
+
+    @staticmethod
+    def _quat_to_axis_angle(q: np.ndarray) -> np.ndarray:
+        """Convert unit quaternion [x, y, z, w] to axis-angle (3-dim, radians)."""
+        # Canonical hemisphere: ensure positive w to avoid sign ambiguity
+        if q[3] < 0:
+            q = -q
+        angle = 2.0 * np.arccos(np.clip(q[3], -1.0, 1.0))
+        if angle < 1e-8:
+            return np.zeros(3)
+        axis = q[:3] / np.sin(angle / 2.0)
+        return axis * angle
+
+    def _compute_delta(self, target, current) -> MotionUpdateActionDict:
+        """Compute the 6-dim relative delta between target and current TCP pose."""
+        dx = target.position.x - current.position.x
+        dy = target.position.y - current.position.y
+        dz = target.position.z - current.position.z
+
+        q_tgt = np.array([
+            target.orientation.x,
+            target.orientation.y,
+            target.orientation.z,
+            target.orientation.w,
+        ])
+        q_cur = np.array([
+            current.orientation.x,
+            current.orientation.y,
+            current.orientation.z,
+            current.orientation.w,
+        ])
+        q_delta = self._quat_multiply(q_tgt, self._quat_inverse(q_cur))
+        aa = self._quat_to_axis_angle(q_delta)
+
+        return {
+            "linear.x": float(dx),
+            "linear.y": float(dy),
+            "linear.z": float(dz),
+            "angular.x": float(aa[0]),
+            "angular.y": float(aa[1]),
+            "angular.z": float(aa[2]),
+        }
+
+    # ------------------------------------------------------------------
+    # Teleoperator interface
+    # ------------------------------------------------------------------
+
+    @property
+    def name(self) -> str:
+        return "aic_cheatcode_observer"
+
+    @property
+    def action_features(self) -> dict:
+        return MotionUpdateActionDict.__annotations__
+
+    @property
+    def feedback_features(self) -> dict:
+        return {}
+
+    @property
+    def is_connected(self) -> bool:
+        return self._is_connected
+
+    def connect(self, calibrate: bool = True) -> None:
+        if self.is_connected:
+            raise DeviceAlreadyConnectedError()
+
+        if not rclpy.ok():
+            rclpy.init()
+
+        self._node = rclpy.create_node("cheatcode_observer_teleop")
+
+        def on_pose_command(msg: MotionUpdate):
+            self._last_target_pose = msg.pose
+
+        def on_controller_state(msg: ControllerState):
+            self._last_current_pose = msg.tcp_pose
+            # Recompute delta on every controller state update (matches recording rate)
+            if self._last_target_pose is not None:
+                self._last_action = self._compute_delta(
+                    self._last_target_pose, self._last_current_pose
+                )
+
+        self._pose_sub = self._node.create_subscription(
+            MotionUpdate,
+            "/aic_controller/pose_commands",
+            on_pose_command,
+            10,
+        )
+        self._state_sub = self._node.create_subscription(
+            ControllerState,
+            "/aic_controller/controller_state",
+            on_controller_state,
+            10,
+        )
+
+        self._executor = SingleThreadedExecutor()
+        self._executor.add_node(self._node)
+        self._executor_thread = Thread(target=self._executor.spin, daemon=True)
+        self._executor_thread.start()
+        self._is_connected = True
+
+    @property
+    def is_calibrated(self) -> bool:
+        return True
+
+    def calibrate(self) -> None:
+        pass
+
+    def configure(self) -> None:
+        pass
+
+    def get_action(self) -> dict[str, Any]:
+        if not self.is_connected:
+            raise DeviceNotConnectedError()
+        return cast(dict, self._last_action)
+
+    def send_feedback(self, feedback: dict[str, Any]) -> None:
+        pass
+
+    def disconnect(self) -> None:
+        if self._executor:
+            self._executor.shutdown()
+        if self._node:
+            self._node.destroy_node()
+        self._is_connected = False

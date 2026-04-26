@@ -98,6 +98,7 @@ class CameraImageScaling(TypedDict):
 class AICRobotAICControllerConfig(RobotConfig):
     teleop_target_mode: str = "cartesian"  # "cartesian" or "joint"
     teleop_frame_id: str = "gripper/tcp"  # "gripper/tcp" or "base_link"
+    observe_only: bool = False  # when True, skip publishing commands (use with aic_cheatcode_observer teleop)
 
     arm_joint_names: list[str] = field(default_factory=arm_joint_names.copy)
 
@@ -258,10 +259,14 @@ class AICRobotAICController(Robot):
 
     @cached_property
     def action_features(self) -> dict[str, type]:
+        # observe_only uses MotionUpdateActionDict: the 6-dim relative delta
+        # (position error + axis-angle orientation error) recorded by
+        # AICCheatCodeObserverTeleop, which is directly compatible with
+        # RunACT.py's MODE_VELOCITY inference.
         return (
-            MotionUpdateActionDict.__annotations__
-            if self.teleop_target_mode == "cartesian"
-            else JointMotionUpdateActionDict.__annotations__
+            JointMotionUpdateActionDict.__annotations__
+            if self.teleop_target_mode == "joint" and not self.config.observe_only
+            else MotionUpdateActionDict.__annotations__
         )
 
     @property
@@ -287,12 +292,25 @@ class AICRobotAICController(Robot):
             controller_state_cb, joint_states_cb
         )
 
-        change_mode_req = (
-            TargetMode.MODE_JOINT
-            if self.teleop_target_mode == "joint"
-            else TargetMode.MODE_CARTESIAN
-        )
-        self.send_change_control_mode_req(change_mode_req)
+        # Wait for first state messages (the 3s sleep in AICRos2Interface.connect
+        # is not always enough if the controller just started publishing)
+        deadline = time.time() + 15.0
+        while (
+            self.last_controller_state is None or self.last_joint_states is None
+        ) and time.time() < deadline:
+            time.sleep(0.1)
+        if self.last_controller_state is None or self.last_joint_states is None:
+            logger.warning(
+                "Timed out waiting for initial controller_state / joint_states messages"
+            )
+
+        if not self.config.observe_only:
+            change_mode_req = (
+                TargetMode.MODE_JOINT
+                if self.teleop_target_mode == "joint"
+                else TargetMode.MODE_CARTESIAN
+            )
+            self.send_change_control_mode_req(change_mode_req)
 
         for cam in self.cameras.values():
             cam.connect()
@@ -434,6 +452,9 @@ class AICRobotAICController(Robot):
         self.ros2_interface.joint_motion_update_pub.publish(msg)
 
     def send_action(self, action: dict[str, Any]) -> dict[str, Any]:
+        if self.config.observe_only:
+            # In observe_only mode, CheatCode is in control — do not publish anything.
+            return action
         if self.teleop_target_mode == "cartesian":
             self.send_action_cartesian(action)
             return action

@@ -371,9 +371,40 @@ def _parse_args() -> argparse.Namespace:
         "--lerobot-resume",
         action="store_true",
         help=(
-            "Pass --resume=true to lerobot-record: append to an existing dataset at "
-            "~/.cache/huggingface/lerobot/<repo_id> instead of creating a new folder "
-            "(avoids FileExistsError when reusing the same --dataset-repo-id)."
+            "Pass --resume=true and --dataset.root=HF_LEROBOT_HOME/<repo_id> to lerobot-record "
+            "(required by LeRobot resume). Append to an existing dataset instead of creating a "
+            "new folder (avoids FileExistsError when reusing the same --dataset-repo-id)."
+        ),
+    )
+    parser.add_argument(
+        "--lerobot-num-episodes",
+        type=int,
+        default=None,
+        metavar="N",
+        help=(
+            "Forward --dataset.num_episodes=N to lerobot-record. Without this, LeRobot uses its "
+            "built-in default (often 50). Set N to match your engine batch (e.g. trials in the "
+            "YAML) so recording stops instead of capturing idle time after trials finish."
+        ),
+    )
+    parser.add_argument(
+        "--lerobot-episode-time-s",
+        type=float,
+        default=None,
+        metavar="SEC",
+        help=(
+            "Forward --dataset.episode_time_s=SEC to lerobot-record (length of each recorded "
+            "episode in seconds). Lower than the default (~60) reduces idle footage after the "
+            "insertion finishes; set high enough to cover full approach + insert + settle."
+        ),
+    )
+    parser.add_argument(
+        "--lerobot-streaming-encoding",
+        action="store_true",
+        help=(
+            "Forward --dataset.streaming_encoding=true to lerobot-record. Encodes video during "
+            "the episode instead of blocking between episodes; helps keep episode N+1 aligned "
+            "with trial N+1 when the sim does not wait for LeRobot (avoids missing approach/descent)."
         ),
     )
     parser.add_argument(
@@ -438,9 +469,33 @@ def _lerobot_record_cmd(
         "--play_sounds=false",
         "--display_data=true",
     ]
+    if args.lerobot_num_episodes is not None:
+        cmd.append(f"--dataset.num_episodes={args.lerobot_num_episodes}")
+    if args.lerobot_episode_time_s is not None:
+        cmd.append(f"--dataset.episode_time_s={args.lerobot_episode_time_s}")
+    if args.lerobot_streaming_encoding:
+        cmd.append("--dataset.streaming_encoding=true")
     if args.lerobot_resume:
         cmd.append("--resume=true")
+        # LeRobotDataset.resume() requires an explicit local root (LeRobot 0.4+) so resume
+        # does not write into the revision-safe Hub snapshot cache (root=None).
+        dataset_root = _default_lerobot_dataset_root(dataset_repo_id)
+        cmd.append(f"--dataset.root={dataset_root}")
     return cmd
+
+
+def _maybe_print_lerobot_multiepisode_tip(args: argparse.Namespace) -> None:
+    """LeRobot blocks on encode between episodes unless streaming_encoding is on."""
+    if args.skip_lerobot_record or args.lerobot_streaming_encoding:
+        return
+    n = args.lerobot_num_episodes
+    if n is not None and n >= 2:
+        print(
+            "\n[info] Multi-episode run without --lerobot-streaming-encoding: LeRobot may block "
+            "on video encode after each episode while the simulator keeps running. Later episodes "
+            "can miss approach/descent at the start. Prefer --lerobot-streaming-encoding (see "
+            "LeRobot streaming video encoding docs)."
+        )
 
 
 def _resolve_dataset_repo_id(args: argparse.Namespace) -> str | None:
@@ -511,6 +566,7 @@ def _run_lerobot_record_only(
                 print("\n[info] Interrupted by user.")
                 return 130
         else:
+            _maybe_print_lerobot_multiepisode_tip(args)
             if args.auto_gate_score is not None:
                 return _run_lerobot_record_autogated(workspace, env, args, dataset_repo_id)
             record_cmd = _lerobot_record_cmd(workspace, dataset_repo_id, args)
@@ -569,6 +625,14 @@ def main() -> int | None:
             f"Example root: {_default_lerobot_dataset_root('local/sample_1').parent}",
             file=sys.stderr,
         )
+        return 1
+
+    if args.lerobot_num_episodes is not None and args.lerobot_num_episodes < 1:
+        print("error: --lerobot-num-episodes must be >= 1", file=sys.stderr)
+        return 1
+
+    if args.lerobot_episode_time_s is not None and args.lerobot_episode_time_s <= 0:
+        print("error: --lerobot-episode-time-s must be > 0", file=sys.stderr)
         return 1
 
     if not args.skip_lerobot_record:
@@ -697,6 +761,7 @@ def main() -> int | None:
                     print("\n[info] Interrupted by user.")
                     return 130
             else:
+                _maybe_print_lerobot_multiepisode_tip(args)
                 if args.auto_gate_score is not None:
                     return _run_lerobot_record_autogated(
                         workspace, env, args, dataset_repo_id
